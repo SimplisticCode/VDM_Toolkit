@@ -1144,14 +1144,21 @@ functions
 		--fold[Action](runAction, I, algorithm)
 		if algorithm = [] then I
 		else
-		let action in set {action | action in seq algorithm & pre_isActionEnabled(I, action) and isActionEnabled(I, action)} in
+		let action in set {action | action in set elems algorithm 
+							& pre_isActionEnabled(I, action) 
+							and isActionEnabled(I, action)} 
+		in
 			--@Printf("Action to execute: %s\n", action)
-			runAlgorithm(runAction(I, action), [act | act in seq algorithm & act <> action])
+			runAlgorithm(runAction(I, action), [act | act in set elems algorithm \ {action}])
 	pre 
 		algorithm <> [] => 
-			let action in set {action | action in seq algorithm & pre_isActionEnabled(I, action) and isActionEnabled(I, action)} in
-				pre_runAction(I, action)
-				and pre_runAlgorithm(runAction(I, action), [act | act in seq algorithm & act <> action])
+			let action 
+				in set {action | action in set elems algorithm 
+					& pre_isActionEnabled(I, action) 
+					and isActionEnabled(I, action)} 
+				in
+					pre_runAction(I, action)
+					and pre_runAlgorithm(runAction(I, action), [act | act in set elems algorithm \ {action}])
 	measure len algorithm;
 
 	exchangeActions: map FMURef to FMURef -> seq of Action
@@ -1187,16 +1194,22 @@ functions
 	tickingClocks: Importer -> Importer * set of FMURef
 	tickingClocks(I) ==
 		-- Clocks to tick at the current time
-		let clocksToTick : set of Name = dom (I.schedule :> {I.time.r}),
-		 	affectededInputs = dunion rng (clocksToTick <: I.scenario.connections.timedClockConnections),
+		let clocksTickingNow : set of Name = dom (I.schedule :> {I.time.r}),
+		 	inputsToTick = dunion rng (clocksTickingNow <: I.scenario.connections.timedClockConnections),
+			relevantTimeBasedClocks : set of TimeBasedClock = {clock | clock in set I.scenario.timeBasedClocks & clock.name in set clocksTickingNow},
 			-- Update the schedule for the ticked clocks to a new point in time
-		 	updatedSchedule : map Name to Real1 = {c.name |-> (c.period + I.time.r) | c in set I.scenario.timeBasedClocks & c.name in set clocksToTick},
+		 	updatedSchedule : map Name to Real1 = {c.name |-> (c.period + I.time.r) | c in set relevantTimeBasedClocks},
 			-- The clocks (input) are now relevant and their schedule is now updated
 			I1 = mu(I, 
-						relevantInputClocks |-> affectededInputs,
+						relevantInputClocks |-> inputsToTick,
 						schedule |-> I.schedule ++ updatedSchedule
 			) in
-			mk_(I1, affectededInputs);
+			mk_(I1, inputsToTick)
+	pre 
+		true
+	post
+		(dom (I.schedule :> {I.time.r}) = {} <=> RESULT.#1 = I)
+		and (dom (I.schedule :> {I.time.r}) <> {} <=> RESULT.#2 <> {});
 
 
 	fmusToAdd : Machine * set of Name * set of Name -> set of Name 
@@ -1337,9 +1350,12 @@ functions
 			I1 : Importer = setClock(I, I.scenario.fmus(clock.name), clock.ref, true) in
 				activateClocks(I1, tl clocks)		
 	pre 
-		let clockSet : set of FMURef = {clock | clock in seq clocks} in
+		let clockSet : set of FMURef = elems clocks 
+		in
 			clockSet subset I.readyClocks inter I.relevantInputClocks
-		and let fmusOfClocks : set of FMU = {I.scenario.fmus(clock.name) | clock in seq clocks & clock.name in set dom I.scenario.fmus} in
+		and let fmusOfClocks : set of FMU = 
+			{I.scenario.fmus(clock.name) | clock in set clockSet & clock.name in set dom I.scenario.fmus} 
+		in
 			pre_assertFMUMode(fmusOfClocks, {<EVENT>})
 			and assertFMUMode(fmusOfClocks, {<EVENT>})
 		and (clocks <> [] => 
@@ -1350,11 +1366,11 @@ functions
 						in pre_activateClocks(I1, tl clocks) 
 			)
 	post 
-		let clockSet : set of FMURef = {clock | clock in seq clocks} in
+		let clockSet : set of FMURef = elems clocks in
 			clockSet subset RESULT.activeClocks
 		and (clockSet <> {} => not clockSet subset RESULT.readyClocks)
 		and (clockSet <> {} => not clockSet subset RESULT.relevantInputClocks)
-		and let fmusOfClocks = {RESULT.scenario.fmus(clock.name) | clock in seq clocks} in
+		and let fmusOfClocks = {RESULT.scenario.fmus(clock.name) | clock in set clockSet} in
 			pre_assertFMUMode(fmusOfClocks, {<EVENT>})	
 			and assertFMUMode(fmusOfClocks, {<EVENT>})
 	measure len clocks;
@@ -1626,22 +1642,24 @@ measure card fmus;
 	pre 
 		pre_preEventMode(I, activeClocks)
 		and preEventMode(I, activeClocks)
-		and let eventFMUs : set1 of Name = I.fmusWithEvent union {clock.name | clock in set activeClocks} 
+		and let eventFMUs : set1 of Name = I.fmusWithEvent union {clock.name | clock in set activeClocks},
+				notAddedFMUS : set of Name = (dom I.scenario.fmus) \ eventFMUs
 			in
-			 	pre_calculateRelevantFMUs(I.scenario, eventFMUs, (dom I.scenario.fmus) \ eventFMUs) 	
+			 	pre_calculateRelevantFMUs(I.scenario, eventFMUs, notAddedFMUS)
 			and
-			let	relevantFMUs : set of Name = calculateRelevantFMUs(I.scenario, eventFMUs, (dom I.scenario.fmus) \ eventFMUs) 
+			let	relevantFMUs : set of Name = calculateRelevantFMUs(I.scenario, eventFMUs, notAddedFMUS) 
 			in
 				pre_enterEventMode(I, relevantFMUs)
+				and 
+				let I1 : Importer = enterEventMode(I, relevantFMUs)
+				in
+					--pre_activateClocks(I1, ) 
+				true
 				-- and pre_activateClocks(Importer, relve)
 
 	post postEventMode(RESULT)
 	-- I do not know the measure - it has something to do with the events that FMUs trigger
 	measure is not yet specified;
-
-
-
-
 
 
 
@@ -1732,6 +1750,30 @@ measure card fmus;
 				and pre_fmusSynchronized(fmus)
 				and pre_timeAdvanced(fmus, oldFMUs, false);
 
+
+	cosimStepActions: Connections * map Name to FMU -> seq1 of Action 
+	cosimStepActions(connections, fmus) ==
+		/* 
+			1. Calculate all the actions that should be performed in the co-simulation step
+			*/
+		let outputs : set1 of Action = {mk_Action(<get>, output.name, output.ref) | output in set dom connections 
+																	& output.name in set dom fmus 
+																	and pre_derefOutput(fmus(output.name), output.ref) 
+																	and derefOutput(fmus(output.name), output.ref).type = <continous>},
+			inputs : set1 of Action = {mk_Action(<set>, input.name, input.ref) | input in set rng connections 
+																	& input.name in set dom fmus 
+																	and pre_derefInput(fmus(input.name), input.ref) 
+																	and derefInput(fmus(input.name), input.ref).type = <continous>},
+			steps : set1 of Action = {mk_Action(<step>, fmu.name, 1) | fmu in set rng fmus} in
+		let actions : seq1 of Action = [act | act in set outputs union inputs union steps] in
+			actions
+	pre 
+		{fmuRef.name | fmuRef in set dom connections} subset dom fmus
+		and {fmuRef.name | fmuRef in set rng connections} subset dom fmus
+	post
+		len RESULT = card dom connections + card rng connections  + card dom fmus;
+
+
 	/*
 		This function runs a co-simulation step after the step negotiation
 		Currently we do not support algebraic loops
@@ -1739,23 +1781,21 @@ measure card fmus;
 	*/
     cosimStep: Importer -> Importer
     cosimStep(I) ==
-	let connections : Connections = I.scenario.connections.dataConnections in
 		/* 
 			1. Calculate all the actions that should be performed in the co-simulation step
 			2. Execute the actions in a correct ordeer.
 		*/
-		let outputs : set1 of Action = {mk_Action(<get>, output.name, output.ref) | output in set dom connections 
-																	& derefOutput(I.scenario.fmus(output.name), output.ref).type = <continous>},
-			inputs : set1 of Action = {mk_Action(<set>, input.name, input.ref) | input in set rng connections & derefInput(I.scenario.fmus(input.name), input.ref).type = <continous>},
-			steps : set1 of Action = {mk_Action(<step>, fmu.name, 1) | fmu in set rng I.scenario.fmus} in
-		let actions : seq1 of Action = [act | act in set outputs union inputs union steps] in
+		let actions : seq1 of Action = cosimStepActions(I.scenario.connections.dataConnections, I.scenario.fmus) in
 			runAlgorithm(I, actions)
 	pre 
 		pre_preCoSimulationStep(I.scenario, I.time)
 		and preCoSimulationStep(I.scenario, I.time)
-    post 
-		pre_postCosimulationStep(RESULT.scenario, rng I.scenario.fmus)
-		and postCosimulationStep(RESULT.scenario, rng I.scenario.fmus);
+		and pre_cosimStepActions(I.scenario.connections.dataConnections, I.scenario.fmus)
+		and 
+			pre_runAlgorithm(I,  cosimStepActions(I.scenario.connections.dataConnections, I.scenario.fmus)) 
+		post 
+			pre_postCosimulationStep(RESULT.scenario, rng I.scenario.fmus)
+			and postCosimulationStep(RESULT.scenario, rng I.scenario.fmus);
 
 	preTermination : Importer -> bool
 	preTermination(I) ==
@@ -1784,5 +1824,126 @@ measure card fmus;
 	post 
 		pre_postTermination(RESULT, I)
 		and postTermination(RESULT, I);
-	
+
+    -- Calculate an appropiate step duration that all FMUs can take
+	-- This should be done dynamically
+    stepNegotiation: Importer -> Real1
+    stepNegotiation(I) ==
+		let maxSteps : set1 of Real1 = {fmu.maxStep | fmu in set rng I.scenario.fmus},
+		 	scheduling : set of Real1 = {t - I.time.r | t in set rng I.schedule},
+			timeLeft : Real1 = I.endtime.r - I.time.r,
+			steps : set1 of Real1 = maxSteps union scheduling union {timeLeft} 
+		in
+			selectMinStep(steps)
+	pre 
+		let maxSteps : set1 of Real1 = {fmu.maxStep | fmu in set rng I.scenario.fmus},
+		 	scheduling : set of Real1 = {t - I.time.r | t in set rng I.schedule},
+			timeLeft : Real1 = I.endtime.r - I.time.r,
+			steps : set1 of Real1 = maxSteps union scheduling union {timeLeft} 
+		in
+			pre_selectMinStep(steps)
+	post (forall fmu in set rng I.scenario.fmus & fmu.maxStep >= RESULT) -- We ensure that the step is allowed
+			and (forall clockTicks in set rng I.schedule & (clockTicks - I.time.r) >= RESULT) -- We do not miss a clock tick
+			and RESULT <= I.stepSize -- We do not find a step larger than we want to take
+			and RESULT <= I.endtime.r - I.time.r; -- We should not select a
+
+
+	checkHandleEvents : Importer -> Importer
+	checkHandleEvents(I) ==
+        let mk_(I1, clocksToTick) : Importer * set of FMURef = tickingClocks(I),
+		-- We should enter event mode if any clocks have ticked or any fmu wants to enter Event mode
+			eventDetected : bool = clocksToTick <> {} or I1.fmusWithEvent <> {},
+        /*
+            If any events are present we solve them
+        */
+			I2 : Importer = (if eventDetected then clockedSimulationAlgorithm(I1, clocksToTick) else I) 
+			
+			in I2
+
+	pre pre_tickingClocks(I)
+	post 
+		let mk_(I1, clocksToTick) : Importer * set of FMURef = tickingClocks(I),
+		-- We should enter event mode if any clocks have ticked or any fmu wants to enter Event mode
+			eventDetected : bool = clocksToTick <> {} or I1.fmusWithEvent <> {} 
+		in
+			(eventDetected <=> RESULT <> I);
+		
+	updateScenarioAfterStep : Importer -> Importer
+	updateScenarioAfterStep(I) ==
+		let fmus : map Name to FMU = I.scenario.fmus 
+		in
+			mu(I, 
+				scenario |-> 
+					mu(I.scenario, 
+						fmus |-> { name |-> mu(fmus(name), stepped |-> false) | name in set dom fmus }),
+						time |-> mk_Time(I.time.r + I.stepSize, I.time.i)
+			)
+	pre 
+		--All fmus are stepped
+		forall fmu in set rng I.scenario.fmus & fmu.stepped
+	post
+		I.time.r + I.stepSize = RESULT.time.r
+		and forall fmu in set rng RESULT.scenario.fmus & not fmu.stepped;
+
+
+	/*
+	 * This is the co-simulation step procedure that moves the scenario from time "t" to time "t+H"
+	 */
+    cosimulationStep: Importer -> Importer 
+    cosimulationStep(I) ==
+        /*
+            Detect events at the initial time
+			And handle them
+        */
+		let I1 : Importer = checkHandleEvents(I),
+        /*
+            Select a step duration using step negotiation
+         */
+			I2 : Importer = mu(I1, stepSize |-> stepNegotiation(I1)),
+        /*
+            Perform the rest of the simulation
+        */
+			I3 : Importer = cosimStep(I2),
+		-- @Printf("Cosimulation Step performed\n")
+			I4 : Importer = updateScenarioAfterStep(I3)
+			in
+				if I4.endtime > I4.time 
+				then 
+					-- @Printf("We run an extra iteration of the co-simulation step\n")
+					cosimulationStep(I4) 
+				else I4
+	pre 
+		pre_preCoSimulationStep(I.scenario, I.time)
+		and preCoSimulationStep(I.scenario, I.time)
+		and pre_checkHandleEvents(I)
+		and		
+			let I1 : Importer = checkHandleEvents(I)
+			in
+				pre_stepNegotiation(I1)
+			and
+				let I2 : Importer = mu(I1, stepSize |-> stepNegotiation(I1))
+				in 
+					pre_cosimStep(I2)
+				and 
+					let I3 : Importer = cosimStep(I2)
+					in pre_updateScenarioAfterStep(I3)
+					and 
+						let I4 : Importer = updateScenarioAfterStep(I3) 
+						in 
+							(I4.endtime > I4.time => pre_cosimulationStep(I4))
+    post 
+		pre_preCoSimulationStep(RESULT.scenario, RESULT.time)  
+		and preCoSimulationStep(RESULT.scenario, RESULT.time) 
+		and I.time.r <= RESULT.time.r
+		and	pre_ImporterNotAffected(I, RESULT)	
+		and	ImporterNotAffected(I, RESULT)
+		and 
+		let M' : set1 of FMU = rng RESULT.scenario.fmus,
+			M  : set1 of FMU = rng I.scenario.fmus in
+			pre_timeAdvanced(M', M, false)
+         	and timeAdvanced(M', M, false)
+	measure I.endtime.r - I.time.r;
+
+
+
 end Clocks
