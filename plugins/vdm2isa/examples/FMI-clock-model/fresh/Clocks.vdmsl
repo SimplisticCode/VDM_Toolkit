@@ -44,10 +44,8 @@ definitions
 		i	: nat
 	eq a = b == a.r = b.r and a.i = b.i
 	ord a < b ==
-		(a.r < b.r) or (a.r = b.r and a.i < b.i) 
+		(a.r < b.r) or (a.r = b.r and a.i < b.i); 
 		
-		;	-- NB using real equality!
-
 	/**
 	 * Possible "interval" values for a Clock variable
 	 */
@@ -87,11 +85,14 @@ definitions
 		actionType : ActionType
 		fmu : Name
 		port : Ref
+	inv mk_Action(actionType, -, port) ==
+		actionType = <step> <=> port <> 0
 	eq act1 = act2 == 
 		act1.actionType = act2.actionType 
 		and act1.fmu = act2.fmu 
 		and act1.port = act2.port
-	ord a < b == a.port < b.port;
+	ord a < b == a.port < b.port
+		or (a.port = b.port and len(a.fmu) < len(b.fmu));
 	
 
 
@@ -101,10 +102,10 @@ definitions
 	FMURef ::
 		name	: Name
 		ref		: Ref
-	ord a < b == a.ref < b.ref
 	eq mk_FMURef(name1, ref1) = mk_FMURef(name2, ref2) == 
 		name1 = name2
-		and ref1 = ref2;
+		and ref1 = ref2
+	ord a < b == a.ref < b.ref;
 
 	/**
 	* The value that a clock or variable can have. 
@@ -113,10 +114,10 @@ definitions
 	FMIValue ::
 		fmiValue : ValueType
 		time 	 : Time
-	ord mk_FMIValue(-, t1) < mk_FMIValue(-, t2) == t1 < t2
 	eq mk_FMIValue(val1, t1) = mk_FMIValue(val2, t2) == 
 		val1 = val2
-		and t1 = t2;
+		and t1 = t2
+	ord mk_FMIValue(-, t1) < mk_FMIValue(-, t2) == t1 < t2;
 
 	/**
 	* The current known FMU variable values. These are usually used by FMUs, but note that
@@ -149,12 +150,12 @@ definitions
 		and (causality = <input> => dependsOn = {})
 		and (type = <continous> => clocks = {})
 		and ((type = <discrete> and causality = <input>)  => clocks = {})
-	ord mk_Variable(-, ref1, -, -, -, -, -, -) 
-		<  mk_Variable(-, ref2, -, -, -, -, -, -) ==
-		ref1 < ref2 
 	eq  mk_Variable(name1, ref1, -, causality1, -, -, -, -) 
 		=  mk_Variable(name2, ref2, -, causality2, -, -, -, -) ==
-		name1 = name2 and ref1 = ref2 and causality1 = causality2;
+		name1 = name2 and ref1 = ref2 and causality1 = causality2
+	ord mk_Variable(name1, ref1, -, -, -, -, -, -) 
+		<  mk_Variable(name2, ref2, -, -, -, -, -, -) ==
+		ref1 < ref2 or (ref1 = ref2 and len(name1) < len(name2));
 
 
 	TimeBasedClock ::
@@ -179,9 +180,9 @@ definitions
 	inv clock ==
 		(clock.type = <output> => clock.interval = <triggered>)	-- An output clock must be of type triggered 
 		and (clock.type = <input> => clock.dependsOn = {})  -- Only output clocks are subject to feedthrough
-	ord c1 < c2 == c1.ref < c2.ref 
 	eq mk_Clock(name1, ref1, type1, interval1, -, -) = mk_Clock(name2, ref2, type2, interval2, -, -) == 
-		name1 = name2 and ref1 = ref2 and type1 = type2 and interval1 = interval2;
+		name1 = name2 and ref1 = ref2 and type1 = type2 and interval1 = interval2
+	ord c1 < c2 == c1.ref < c2.ref;
 
 
 functions
@@ -349,11 +350,11 @@ ScenarioConnections ::
 -- 	* A machine is a collection of FMUs, plus a connection map between them. The connection
 -- 	* sources must be FMU outputs and the destinations must be FMU inputs.
 -- 	*/
-	Machine ::
+	Scenario ::
 		fmus					: map Name to FMU
 		timeBasedClocks 		: set of TimeBasedClock
 		connections 			: ScenarioConnections
-	inv mk_Machine(fmus, timeBasedClocks, connections) ==
+	inv mk_Scenario(fmus, timeBasedClocks, connections) ==
 		(forall srcRef in set dom connections.dataConnections &
 			-- Every connection's source is a known FMU
 			srcRef.name in set dom fmus
@@ -369,7 +370,7 @@ ScenarioConnections ::
 					(exists v in set trgFMU.io.LFinput & trgRef.ref = v.ref)
 				and
 				--@LF exu warning 11151 entail a potential failure in the call to deferOutput, which
-				--		  migh mean a failed pre with some of Machine's parameters 
+				--		  migh mean a failed pre with some of Scenario's parameters 
 				 pre_derefOutput(srcFMU, srcRef.ref) 
 				and pre_derefInput(trgFMU, trgRef.ref)
 				and 
@@ -497,6 +498,15 @@ functions
 		and fmu.time.r = oldFMU.time.r + stepTaken
 		and fmu.time.i = oldFMU.time.i
 	pre true;
+	
+	calculate : Ref * Environment * Time -> FMIValue 
+	calculate(ref, env, time) ==
+		-- env: map S to T 
+		-- T :: x : X, y: Y
+		-- mk_FMIValue(real ! bool ! nat ... , Time)
+		mk_FMIValue(env(ref).fmiValue, time)
+	pre ref in set dom env;
+
 
 	/*
 	* This function updates the value at the outputs
@@ -507,13 +517,6 @@ functions
 			{oValue |-> calculate(oValue, fmu.env, time) | oValue in set dom fmu.env inter outputRef & pre_calculate(oValue, fmu.env, time)}
 	pre true;
 	
-	calculate : Ref * Environment * Time -> FMIValue 
-	calculate(ref, env, time) ==
-		-- env: map S to T 
-		-- T :: x : X, y: Y
-		-- mk_FMIValue(real ! bool ! nat ... , Time)
-		mk_FMIValue(env(ref).fmiValue, time)
-	pre ref in set dom env;
 
 	step_tm: FMU * Real1 +> FMU * Real1 * bool
 	step_tm(fmu, step) ==
@@ -532,7 +535,7 @@ functions
 		preStepT(fmu, step) 
 		and pre_preStepT(fmu, step)
 		and 
-			let mk_(stepTaken, -) : Real1 * bool = 
+			let mk_(stepTaken, eventTriggered) : Real1 * bool = 
 					if step >= fmu.maxStep then mk_(fmu.maxStep, true) else mk_(step, false),
 				newTime = mk_Time(fmu.time.r + stepTaken, fmu.time.i)
 			in
@@ -625,7 +628,7 @@ types
 		It has a simulation time and values to exchange between the FMUs
 	*/
 	Importer :: 
-		scenario : Machine
+		scenario : Scenario
         schedule : map Name to Real1 -- the time the clock should tick
 		activeClocks : set of FMURef -- active clocks
 		readyClocks : set of FMURef -- clocks that can be activated
@@ -933,7 +936,7 @@ functions
 
 
     -- All connections are synchronized meaning the input and output value is identical
-    variablesSynchronized: Machine * set1 of PortType -> bool
+    variablesSynchronized: Scenario * set1 of PortType -> bool
     variablesSynchronized(M, variableTypes) ==
 		let outputs : set of FMURef = filterOutputs([fmu | fmu in set rng M.fmus], variableTypes) in
         forall srcPort in set outputs &
@@ -1205,7 +1208,7 @@ functions
 		and (dom (I.schedule :> {I.time.r}) <> {} <=> RESULT.#2 <> {});
 
 
-	fmusToAdd : Machine * set of Name * set of Name -> set of Name 
+	fmusToAdd : Scenario * set of Name * set of Name -> set of Name 
 	fmusToAdd(M, addedFMUs, notAddedFMUS) ==
 		{M.connections.clockConnections(con).name | con in set dom M.connections.clockConnections & con.name in set addedFMUs 
 															and M.connections.clockConnections(con).name in set notAddedFMUS} 
@@ -1217,7 +1220,7 @@ functions
 		We added the FMUs that has a ticking clock 
 		And subsequently include all FMUs that has clock connection from an FMU in the event Mode 
 	*/ 
-	calculateRelevantFMUs: Machine * set of Name * set of Name -> set of Name 
+	calculateRelevantFMUs: Scenario * set of Name * set of Name -> set of Name 
 	calculateRelevantFMUs(M, relevantFMUs, notRelevantFMUs) == 
 		let addedFMUs : set of Name = fmusToAdd(M, relevantFMUs, notRelevantFMUs) in
 		-- We terminate if we have reached a fixed point where no more relevant FMUs can be found
@@ -1243,7 +1246,7 @@ functions
 	/*
 		The precondition of the Co-simulation Step procedure
 	*/
-    preCoSimulationStep: Machine * Time -> bool
+    preCoSimulationStep: Scenario * Time -> bool
     preCoSimulationStep(scenario, time) ==
         let fmus : set1 of FMU = rng scenario.fmus in
 			pre_assertFMUMode(fmus, {<STEP>})
@@ -1460,7 +1463,7 @@ selectAction(I) ==
 	 */
 	updateDiscreteState: Importer * set1 of Name -> Importer
 	updateDiscreteState(I,fmus) ==
-		let M : Machine = I.scenario,
+		let M : Scenario = I.scenario,
 			res : map Name to (FMU * bool) = {fmu |-> step_e(M.fmus(fmu)) | fmu in set fmus},
 			fmuMap : map Name to FMU = I.scenario.fmus ++ { fmu |-> res(fmu).#1 | fmu in set dom res}, 
 			eventFMUs : set of Name = { fmu | fmu in set dom res & res(fmu).#2 = true} -- fmus that triggered an event
@@ -1746,7 +1749,7 @@ measure card fmus;
 		and RESULT.time = mk_Time(0,0);
 
 
-	postCosimulationStep: Machine * set1 of FMU -> bool
+	postCosimulationStep: Scenario * set1 of FMU -> bool
     postCosimulationStep(scenario, oldFMUs) ==
 		let fmus : set1 of FMU = rng scenario.fmus in
 			assertFMUMode(fmus, {<STEP>}) 
@@ -1964,5 +1967,54 @@ measure card fmus;
 	measure I.endtime.r - I.time.r;
 
 
+	createImporter : Scenario * Real1 * Real1 -> Importer
+	createImporter(M, endtime, stepSize) ==
+	let clocks : set of FMURef = 
+			dunion {createFMURefs(fmu, {c.ref | c in set fmu.clocks}) 
+						| fmu in set rng M.fmus 
+							& pre_createFMURefs(fmu, {c.ref | c in set fmu.clocks})},  
+
+		discreteVariables : set of FMURef = 
+			dunion {createFMURefs(fmu, {v.ref | v in set (fmu.io.LFinput union fmu.io.LFoutput) & v.type = <discrete>}) 
+									| fmu in set rng M.fmus
+										& pre_createFMURefs(fmu, {v.ref | v in set (fmu.io.LFinput union fmu.io.LFoutput) & v.type = <discrete>})}
+	in
+		mk_Importer(
+			M,
+			{|->},
+			{},
+			clocks,
+			clocks,
+			{},
+			{},
+			{},
+			{},
+			{},
+			discreteVariables,
+			mk_Time(0,0),
+			mk_Time(endtime, 0),
+			stepSize,
+			{|->}
+		)
+	pre true;
+
+
+	runScenario: Scenario -> Importer
+	runScenario(scenario) ==
+		let I : Importer = createImporter(scenario, 10, 5), 
+			I_initialed : Importer = initialization(I),
+			I2 : Importer = cosimulationStep(I_initialed) in
+		terminate(I2)
+	pre 
+		pre_createImporter(scenario, 10, 5)
+		and 
+			let I : Importer = createImporter(scenario, 10, 5)
+			in pre_initialization(I)
+			and 
+				let I_initialed : Importer = initialization(I)
+				in pre_cosimulationStep(I_initialed) 
+				and 
+				let I2 : Importer = cosimulationStep(I_initialed) in
+				pre_terminate(I2);
 
 end Clocks

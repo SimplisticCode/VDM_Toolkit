@@ -1,4 +1,4 @@
-(* VDM to Isabelle Translation @2022-02-22T07:35:56.114727Z
+(* VDM to Isabelle Translation @2022-02-22T07:37:54.598483Z
    Copyright 2021, Leo Freitas, leo.freitas@newcastle.ac.uk
 
 in 'mapExample.vdmsl' at line 1:8
@@ -31,22 +31,27 @@ lemmas inv_S_defs = inv_S_def inv_VDMNat_def
 
 	
 	
-\<comment>\<open>VDM source: T = compose T of y:map (nat) to (S) end\<close>
+\<comment>\<open>VDM source: T = compose T of y:map (nat) to (S) end
+	inv mk_T(y) == (forall x in set (dom y) & ((y(x).x) > 10))\<close>
 \<comment>\<open>in 'mapExample' (mapExample.vdmsl) at line 9:5\<close>
 record T = 
 	y\<^sub>T :: "(VDMNat \<rightharpoonup> S)"
 	
 
 \<comment>\<open>VDM source: inv_T: (T +> bool)
-	inv_T(dummy0) ==
-null\<close>
-\<comment>\<open>in 'mapExample' (mapExample.vdmsl) at line 9:5\<close>
+	inv_T(mk_T(y)) ==
+(forall x in set (dom y) & ((y(x).x) > 10))\<close>
+\<comment>\<open>in 'mapExample' (mapExample.vdmsl) at line 11:9\<close>
 definition
 	inv_T :: "T \<Rightarrow> bool"
 where
 	"inv_T dummy0 \<equiv> 
-		\<comment>\<open>Implicitly defined type invariant checks for undeclared `inv_T` specification.\<close>
-		( (((inv_Map (inv_VDMNat) inv_S  (y\<^sub>T dummy0))) ))"
+		\<comment>\<open>Implicitly defined type invariant checks for  `inv_T` specification.\<close>
+		( (((inv_Map (inv_VDMNat) inv_S  (y\<^sub>T dummy0))) ))  \<and> 
+		\<comment>\<open>Implicit pattern context conversion\<close>
+		(let y = (y\<^sub>T dummy0) in 
+		\<comment>\<open>User defined body of inv_T.\<close>
+		(\<forall> x \<in> (dom y)  . ((x\<^sub>S (the((y x)))) > (10::VDMNat1))))"
  
 lemmas inv_T_defs = inv_Map_def inv_Map_defs inv_S_def inv_T_def inv_VDMNat_def 
 
@@ -56,12 +61,12 @@ lemmas inv_T_defs = inv_Map_def inv_Map_defs inv_S_def inv_T_def inv_VDMNat_def
 \<comment>\<open>VDM source: f: (T * S -> nat)
 	f(m, s) ==
 ((m.y)(((m.y)((s.x)).x)).x)\<close>
-\<comment>\<open>in 'mapExample' (mapExample.vdmsl) at line 14:5\<close>
+\<comment>\<open>in 'mapExample' (mapExample.vdmsl) at line 16:5\<close>
 
 \<comment>\<open>VDM source: pre_f: (T * S +> bool)
 	pre_f(m, s) ==
 null\<close>
-\<comment>\<open>in 'mapExample' (mapExample.vdmsl) at line 14:5\<close>
+\<comment>\<open>in 'mapExample' (mapExample.vdmsl) at line 16:5\<close>
 definition
 	pre_f :: "T \<Rightarrow> S \<Rightarrow> bool"
 where
@@ -73,7 +78,7 @@ where
 \<comment>\<open>VDM source: post_f: (T * S * nat +> bool)
 	post_f(m, s, RESULT) ==
 null\<close>
-\<comment>\<open>in 'mapExample' (mapExample.vdmsl) at line 14:5\<close>
+\<comment>\<open>in 'mapExample' (mapExample.vdmsl) at line 16:5\<close>
 definition
 	post_f :: "T \<Rightarrow> S \<Rightarrow> VDMNat \<Rightarrow> bool"
 where
@@ -93,12 +98,12 @@ where
 \<comment>\<open>VDM source: g: (T * S -> nat)
 	g(m, s) ==
 f(m, (m.y)(((m.y)((s.x)).x)))\<close>
-\<comment>\<open>in 'mapExample' (mapExample.vdmsl) at line 19:5\<close>
+\<comment>\<open>in 'mapExample' (mapExample.vdmsl) at line 21:5\<close>
 
 \<comment>\<open>VDM source: pre_g: (T * S +> bool)
 	pre_g(m, s) ==
 null\<close>
-\<comment>\<open>in 'mapExample' (mapExample.vdmsl) at line 19:5\<close>
+\<comment>\<open>in 'mapExample' (mapExample.vdmsl) at line 21:5\<close>
 definition
 	pre_g :: "T \<Rightarrow> S \<Rightarrow> bool"
 where
@@ -110,7 +115,7 @@ where
 \<comment>\<open>VDM source: post_g: (T * S * nat +> bool)
 	post_g(m, s, RESULT) ==
 null\<close>
-\<comment>\<open>in 'mapExample' (mapExample.vdmsl) at line 19:5\<close>
+\<comment>\<open>in 'mapExample' (mapExample.vdmsl) at line 21:5\<close>
 definition
 	post_g :: "T \<Rightarrow> S \<Rightarrow> VDMNat \<Rightarrow> bool"
 where
@@ -130,12 +135,12 @@ where
 \<comment>\<open>VDM source: h: (S * S -> S)
 	h(mk_S(x), mk_S(y)) ==
 mk_S((x + y))\<close>
-\<comment>\<open>in 'mapExample' (mapExample.vdmsl) at line 23:5\<close>
+\<comment>\<open>in 'mapExample' (mapExample.vdmsl) at line 25:5\<close>
 
 \<comment>\<open>VDM source: pre_h: (S * S +> bool)
 	pre_h(mk_S(x), mk_S(y)) ==
 null\<close>
-\<comment>\<open>in 'mapExample' (mapExample.vdmsl) at line 23:5\<close>
+\<comment>\<open>in 'mapExample' (mapExample.vdmsl) at line 25:5\<close>
 definition
 	pre_h :: "S \<Rightarrow> S \<Rightarrow> bool"
 where
@@ -147,7 +152,7 @@ where
 \<comment>\<open>VDM source: post_h: (S * S * S +> bool)
 	post_h(mk_S(x), mk_S(y), RESULT) ==
 null\<close>
-\<comment>\<open>in 'mapExample' (mapExample.vdmsl) at line 23:5\<close>
+\<comment>\<open>in 'mapExample' (mapExample.vdmsl) at line 25:5\<close>
 definition
 	post_h :: "S \<Rightarrow> S \<Rightarrow> S \<Rightarrow> bool"
 where
@@ -170,12 +175,12 @@ where
 \<comment>\<open>VDM source: h': (S * S -> S)
 	h'(a, b) ==
 let mk_S(x):S = a, mk_S(y):S = b in mk_S((x + y))\<close>
-\<comment>\<open>in 'mapExample' (mapExample.vdmsl) at line 26:5\<close>
+\<comment>\<open>in 'mapExample' (mapExample.vdmsl) at line 28:5\<close>
 
 \<comment>\<open>VDM source: pre_h': (S * S +> bool)
 	pre_h'(a, b) ==
 null\<close>
-\<comment>\<open>in 'mapExample' (mapExample.vdmsl) at line 26:5\<close>
+\<comment>\<open>in 'mapExample' (mapExample.vdmsl) at line 28:5\<close>
 definition
 	pre_h' :: "S \<Rightarrow> S \<Rightarrow> bool"
 where
@@ -187,7 +192,7 @@ where
 \<comment>\<open>VDM source: post_h': (S * S * S +> bool)
 	post_h'(a, b, RESULT) ==
 null\<close>
-\<comment>\<open>in 'mapExample' (mapExample.vdmsl) at line 26:5\<close>
+\<comment>\<open>in 'mapExample' (mapExample.vdmsl) at line 28:5\<close>
 definition
 	post_h' :: "S \<Rightarrow> S \<Rightarrow> S \<Rightarrow> bool"
 where
@@ -222,12 +227,12 @@ where
 \<comment>\<open>VDM source: h'': (S * S -> S)
 	h''(a, b) ==
 mk_S(((a.x) + (b.x)))\<close>
-\<comment>\<open>in 'mapExample' (mapExample.vdmsl) at line 31:5\<close>
+\<comment>\<open>in 'mapExample' (mapExample.vdmsl) at line 33:5\<close>
 
 \<comment>\<open>VDM source: pre_h'': (S * S +> bool)
 	pre_h''(a, b) ==
 null\<close>
-\<comment>\<open>in 'mapExample' (mapExample.vdmsl) at line 31:5\<close>
+\<comment>\<open>in 'mapExample' (mapExample.vdmsl) at line 33:5\<close>
 definition
 	pre_h'' :: "S \<Rightarrow> S \<Rightarrow> bool"
 where
@@ -239,7 +244,7 @@ where
 \<comment>\<open>VDM source: post_h'': (S * S * S +> bool)
 	post_h''(a, b, RESULT) ==
 null\<close>
-\<comment>\<open>in 'mapExample' (mapExample.vdmsl) at line 31:5\<close>
+\<comment>\<open>in 'mapExample' (mapExample.vdmsl) at line 33:5\<close>
 definition
 	post_h'' :: "S \<Rightarrow> S \<Rightarrow> S \<Rightarrow> bool"
 where
