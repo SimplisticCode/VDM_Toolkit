@@ -47,7 +47,7 @@ public abstract class GeneralisaPlugin extends CommandPlugin {
 	// strict handling of errors (e.g. print output or not etc.)
 	public static boolean strict;	
     // whether to report or hide warnings
-	public static boolean reportWarnings;
+	public static boolean reportVDMWarnings;
 
     private int localErrors;
     private int localWarnings;
@@ -70,7 +70,7 @@ public abstract class GeneralisaPlugin extends CommandPlugin {
             //    ,"/Users/nljsf/Local/reps/git/VDM_Toolkit/plugins/vdm2isa/java/src/test/resources/TestV2IExprsIs.vdmsl"
             // ,"/Users/nljsf/Local/reps/git/VDM_Toolkit/plugins/vdm2isa/java/src/test/resources/TestV2IExprsMaps.vdmsl"
             //    ,"/Users/nljsf/Local/reps/git/VDM_Toolkit/plugins/vdm2isa/java/src/test/resources/TestV2IExprsOptional.vdmsl"
-                ,"/Users/nljsf/Local/reps/git/VDM_Toolkit/plugins/vdm2isa/java/src/test/resources/TestV2IExprsRecords.vdmsl"
+            //    ,"/Users/nljsf/Local/reps/git/VDM_Toolkit/plugins/vdm2isa/java/src/test/resources/TestV2IExprsRecords.vdmsl"
             //    ,"/Users/nljsf/Local/reps/git/VDM_Toolkit/plugins/vdm2isa/java/src/test/resources/TestV2IExprsSets.vdmsl"
             //    ,"/Users/nljsf/Local/reps/git/VDM_Toolkit/plugins/vdm2isa/java/src/test/resources/TestV2IExprsSpecial.vdmsl"
             // ,"/Users/nljsf/Local/reps/git/VDM_Toolkit/plugins/vdm2isa/java/src/test/resources/TestV2IExprsToken.vdmsl"
@@ -92,6 +92,7 @@ public abstract class GeneralisaPlugin extends CommandPlugin {
             //    , "/Users/nljsf/Local/reps/git/VDM_Toolkit/plugins/vdm2isa/java/src/test/resources/TestV2ITypesUnion.vdmsl"
             //    ,"/Users/nljsf/Local/reps/git/VDM_Toolkit/plugins/vdm2isa/java/src/test/resources/TestV2IWarnings.vdmsl"
             //     ,"/Users/nljsf/Local/reps/git/VDM_Toolkit/plugins/vdm2isa/java/src/test/resources/real/Clocks.vdmsl"
+                 ,"/Users/nljsf/Local/reps/git/VDM_Toolkit/plugins/vdm2isa/examples/FMI-clock-model/fresh/mapExample.vdmsl"
 });
     }
 
@@ -122,7 +123,7 @@ public abstract class GeneralisaPlugin extends CommandPlugin {
         Console.out.print(getLocalErrorCount() == 0 ? "No issues" :
             "Found " + plural(getLocalErrorCount(), "issues", "s"));
         Console.out.print(getLocalWarningCount() == 0 ? "" : " and " +
-            (GeneralisaPlugin.reportWarnings ? "" : "suppressed ") + plural(getLocalWarningCount(), "warning", "s") + ".");
+            (GeneralisaPlugin.reportVDMWarnings ? "" : "suppressed ") + plural(getLocalWarningCount(), "warning", "s") + ".");
         Console.out.println(getLocalErrorCount() > 0 ? " Proceeding with translation with remaining issues may lead to Isabelle errors!" : "");
     }
 
@@ -208,7 +209,7 @@ public abstract class GeneralisaPlugin extends CommandPlugin {
 
 			//addLocalWarnings(Vdm2isaPlugin.getWarningCount());
 			addLocalWarnings(GeneralisaPlugin.getWarningCount());
-			if (getLocalWarningCount() > 0 && GeneralisaPlugin.reportWarnings)
+			if (getLocalWarningCount() > 0 && GeneralisaPlugin.reportVDMWarnings)
 			{
 				GeneralisaPlugin.printWarnings(Console.out);
 			}
@@ -375,6 +376,6 @@ public abstract class GeneralisaPlugin extends CommandPlugin {
         GeneralisaPlugin.strict = false;
         GeneralisaPlugin.maxErrors = Properties.tc_max_errors > 0 ? 2 * Properties.tc_max_errors : 100;
         GeneralisaPlugin.isaVersion = "Isabelle2021: February 2021";
-        GeneralisaPlugin.reportWarnings = true;
+        GeneralisaPlugin.reportVDMWarnings = true;
     }
 }
