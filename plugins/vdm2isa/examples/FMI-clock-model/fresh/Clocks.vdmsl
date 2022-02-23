@@ -145,11 +145,11 @@ definitions
 		dependsOn   : set of Ref -- feedthrough only relevant for outputs
 		contract    : Contract 
 	inv mk_Variable(-, -, -, causality, type, clocks, dependsOn, contract) ==
-		(causality = <output> => contract = <none>) -- input contract only relevant for inputs
-		and (causality = <input> => contract <> <none>) -- input contract defined on inputs
+		(causality = <output> <=> contract = <none>) -- input contract only relevant for inputs
+		and (causality = <input> <=> contract <> <none>) -- input contract defined on inputs
 		and (causality = <input> => dependsOn = {})
 		and (type = <continous> => clocks = {})
-		and ((type = <discrete> and causality = <input>)  => clocks = {})
+		and ((type = <discrete> and causality = <input>) => clocks = {})
 	eq  mk_Variable(name1, ref1, -, causality1, -, -, -, -) 
 		=  mk_Variable(name2, ref2, -, causality2, -, -, -, -) ==
 		name1 = name2 and ref1 = ref2 and causality1 = causality2
@@ -164,7 +164,10 @@ definitions
 		period		: Real1
 		interval	: Interval
 		master 		: FMURef -- who should ask about the clock schedule
-	inv clock == clock.interval <> <triggered>;
+	inv clock == clock.interval <> <triggered>
+	eq clock1 = clock2 ==
+		clock1.name = clock2.name
+		and clock1.master = clock2.master;
 
 
 	/**
@@ -180,8 +183,12 @@ definitions
 	inv clock ==
 		(clock.type = <output> => clock.interval = <triggered>)	-- An output clock must be of type triggered 
 		and (clock.type = <input> => clock.dependsOn = {})  -- Only output clocks are subject to feedthrough
-	eq mk_Clock(name1, ref1, type1, interval1, -, -) = mk_Clock(name2, ref2, type2, interval2, -, -) == 
-		name1 = name2 and ref1 = ref2 and type1 = type2 and interval1 = interval2
+	eq mk_Clock(name1, ref1, type1, interval1, -, -) = mk_Clock(name2, ref2, type2, interval2, -, -) 
+		== 
+			name1 = name2 
+			and ref1 = ref2 
+			and type1 = type2 
+			and interval1 = interval2
 	ord c1 < c2 == c1.ref < c2.ref;
 
 
@@ -286,12 +293,9 @@ types
 			-- All active clocks are defined
 			and (activeClocks subset crefs)
 			-- A clock can only be active when the fmu is in event mode
-			--@LF whether a single => or three won't make much of a difference to Isabelle 
-			and (mode <> <EVENT> => activeClocks = {} and activeEquations = {} and time.i = 0)
 			-- An equation can only be active when the fmu is in event mode
-			and (mode <> <EVENT> => activeEquations = {})
 			-- The integer clock can only be nonzero in event mode
-			and (mode <> <EVENT> => time.i = 0)
+			and (mode <> <EVENT> => activeClocks = {} and activeEquations = {} and time.i = 0)
 			-- All variables' clocks are defined
 			and (forall var in set vars & var.clocks subset crefs)
 			-- An active variable is active by a clock Todo
@@ -303,6 +307,19 @@ types
 		--@LF given that the FMU1/2 projections are just single case, won't bother with the mk_FMU expression 
 		ord fmu1 < fmu2 == fmu1.id < fmu2.id
 		;
+	Connections = map FMURef to FMURef
+		inv cons ==
+			rng cons inter dom cons = {};
+
+	ScenarioConnections ::
+			dataConnections			: Connections
+			clockConnections		: Connections
+			timedClockConnections	: map Name to set1 of FMURef
+		inv mk_ScenarioConnections(connections, clockConnections, timedClockConnections) ==
+			dom clockConnections inter dom connections = {}
+			and rng clockConnections inter rng connections = {}
+			and rng clockConnections inter dunion rng timedClockConnections = {}
+			and rng connections inter dunion rng timedClockConnections = {};
 
 functions
 	/**
@@ -328,23 +345,68 @@ functions
 	derefOutput(fmu, ref) ==
 		iota c in set fmu.io.LFoutput & c.ref = ref
 	pre exists c in set fmu.io.LFoutput & c.ref = ref;
+	
+
+	validConnections : Connections * map Name to FMU -> bool
+	validConnections(connections, fmus) ==
+		{ref.name | ref in set (dom connections union rng connections)} subset dom fmus
+		and
+		(forall srcRef in set dom connections &
+			-- Every connection's source is a known FMU
+			-- Every connection's destination is a known FMU
+			-- Every connection's source is an output from its FMU
+			srcRef.name in set dom fmus
+			and 
+			let srcFMU : FMU = fmus(srcRef.name),
+				trgRef : FMURef = connections(srcRef)
+			in 
+				-- Every connection's destination is an input of its FMU
+				trgRef.name in set dom fmus
+				and
+				let 
+					trgFMU = fmus(trgRef.name)
+				in
+					pre_derefInput(trgFMU, trgRef.ref)
+					and pre_derefOutput(srcFMU, srcRef.ref) 
+					and 
+					let outputVar : Variable = derefOutput(srcFMU, srcRef.ref),
+						inputVar : Variable = derefInput(trgFMU, trgRef.ref) 
+					in
+						outputVar.type = inputVar.type
+		)
+	pre true;
+
+
+	validClockConnections : Connections * map Name to FMU -> bool
+	validClockConnections(connections, fmus) ==
+		{ref.name | ref in set (dom connections union rng connections)} subset dom fmus
+		and
+		forall srcRef in set dom connections &
+			-- Every connection's source is a known FMU
+			srcRef.name in set dom fmus
+			-- Every connection's source is an output from its FMU
+			and 
+			let 
+				srcFMU : FMU = fmus(srcRef.name),
+				trgRef : FMURef = connections(srcRef)
+			in 
+				trgRef.name in set dom fmus
+			and
+			let 
+				trgFMU = fmus(trgRef.name)
+			in
+				exists1 v in set srcFMU.clocks 
+								& srcRef.ref = v.ref 
+								and v.type = <output> 
+								and v.interval = <triggered>
+				and 
+				exists1 v1 in set trgFMU.clocks 
+								& trgRef.ref = v1.ref 
+								and v.type = <input> 
+								and v.interval = <triggered>
+	pre true;
 
 types
-
-Connections = map FMURef to FMURef
-	inv cons ==
-		rng cons inter dom cons = {};
-
-ScenarioConnections ::
-		dataConnections			: Connections
-		clockConnections		: Connections
-		timedClockConnections	: map Name to set1 of FMURef
-	inv mk_ScenarioConnections(connections, clockConnections, timedClockConnections) ==
-		dom clockConnections inter dom connections = {}
-		and rng clockConnections inter rng connections = {}
-		and rng clockConnections inter dunion rng timedClockConnections = {}
-		and rng connections inter dunion rng timedClockConnections = {};
-
 
 -- 	/**
 -- 	* A machine is a collection of FMUs, plus a connection map between them. The connection
@@ -355,43 +417,10 @@ ScenarioConnections ::
 		timeBasedClocks 		: set of TimeBasedClock
 		connections 			: ScenarioConnections
 	inv mk_Scenario(fmus, timeBasedClocks, connections) ==
-		(forall srcRef in set dom connections.dataConnections &
-			-- Every connection's source is a known FMU
-			srcRef.name in set dom fmus
-			-- Every connection's source is an output from its FMU
-			and 
-			let srcFMU : FMU = fmus(srcRef.name),
-				trgRef : FMURef = connections.dataConnections(srcRef) in 
-				-- Every connection's destination is an input of its FMU
-				(exists v in set srcFMU.io.LFoutput & srcRef.ref = v.ref)
-				-- Every connection's destination is a known FMU
-				and trgRef.name in set dom fmus
-				and let trgFMU = fmus(trgRef.name) in 
-					(exists v in set trgFMU.io.LFinput & trgRef.ref = v.ref)
-				and
-				--@LF exu warning 11151 entail a potential failure in the call to deferOutput, which
-				--		  migh mean a failed pre with some of Scenario's parameters 
-				 pre_derefOutput(srcFMU, srcRef.ref) 
-				and pre_derefInput(trgFMU, trgRef.ref)
-				and 
-				let outputVar : Variable = derefOutput(srcFMU, srcRef.ref),
-					inputVar : Variable = derefInput(trgFMU, trgRef.ref) in
-				outputVar.type = inputVar.type
-		)
-		and
-		(forall fmuref in set dom connections.clockConnections &
-			-- Every connection's source is a known FMU
-			fmuref.name in set dom fmus
-			-- Every connection's source is an output from its FMU
-			and let fmu : FMU = fmus(fmuref.name) in
-				exists v in set fmu.clocks & fmuref.ref = v.ref and v.type = <output> and v.interval = <triggered>)
-		and
-		(forall fmuref in set rng connections.clockConnections &
-			-- Every connection's destination is a known FMU
-			fmuref.name in set dom fmus
-			-- Every connection's destination is an input of its FMU
-			and let fmu : FMU = fmus(fmuref.name) in
-				exists v in set fmu.clocks & fmuref.ref = v.ref and v.type = <input> and v.interval = <triggered>)
+		pre_validConnections(connections.dataConnections, fmus)
+		and validConnections(connections.dataConnections, fmus)
+		and	pre_validClockConnections(connections.clockConnections, fmus)
+		and validClockConnections(connections.clockConnections, fmus)
 		and dom connections.timedClockConnections = {c.name | c in set timeBasedClocks}
 		and forall t in set timeBasedClocks & t.master in set connections.timedClockConnections(t.name)
 		and forall c in set dunion {c | c in set rng connections.timedClockConnections} &
@@ -410,10 +439,12 @@ functions
 	*/
 	preSet: FMU * Ref -> bool
 	preSet(fmu, input)==
-		exists1 v in set fmu.io.LFinput & v.ref = input and v.causality = <input>
-			and fmu.mode <> <DONE>
-			and (fmu.mode = <STEP> => v.type = <continous>)
-			and (fmu.mode = <EVENT> => v.type = <discrete>)
+		exists1 v in set fmu.io.LFinput 
+			& v.ref = input 
+				and v.causality = <input>
+				and fmu.mode <> <DONE>
+				and (fmu.mode = <STEP> => v.type = <continous>)
+				and (fmu.mode = <EVENT> => v.type = <discrete>)
 		pre true;
 	
 
@@ -421,10 +452,11 @@ functions
 	set_m(fmu, ref, val) ==
 		mu(fmu, env |-> fmu.env ++ { ref |-> val })
 		-- and calculate equations?
-	pre pre_preSet(fmu, ref) and preSet(fmu, ref)
+	pre pre_preSet(fmu, ref) 
+		and preSet(fmu, ref)
 	post RESULT.mode = fmu.mode
-	and RESULT.time = fmu.time
-	and RESULT.io.LFinput = fmu.io.LFinput;
+		and RESULT.time = fmu.time
+		and RESULT.io.LFinput = fmu.io.LFinput;
 
 	feedthroughSatisfied : FMU * Variable -> bool
 	feedthroughSatisfied(fmu, outputVariable)==
@@ -438,11 +470,10 @@ functions
 	preGet: FMU * Ref -> bool
 	preGet(fmu, ref)==
 		let outputVariable : Variable = derefOutput(fmu, ref) in
-		(exists1 v in set fmu.io.LFoutput & v.ref = ref and v.causality = <output>)
-			and fmu.mode <> <DONE>
-			---@ST is this needed?
-			and pre_feedthroughSatisfied(fmu, outputVariable)
-			and feedthroughSatisfied(fmu, outputVariable)
+			(exists1 v in set fmu.io.LFoutput & v.ref = ref and v.causality = <output>)
+				and fmu.mode <> <DONE>
+				and pre_feedthroughSatisfied(fmu, outputVariable)
+				and feedthroughSatisfied(fmu, outputVariable)
 	pre pre_derefOutput(fmu, ref);
 
 
