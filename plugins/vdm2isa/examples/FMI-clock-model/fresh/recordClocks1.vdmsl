@@ -17,7 +17,9 @@ types
 	ord a < b ==
 		(a.r < b.r) or (a.r = b.r and a.i < b.i); 
 		
-	ValueType = real | int;
+	--@LF removed the union but still the "ovalue in set nat_values" ovalue is a real!
+	--ValueType = real; -- | int;
+	ValueType = nat;
 
 	Ref = nat;
 

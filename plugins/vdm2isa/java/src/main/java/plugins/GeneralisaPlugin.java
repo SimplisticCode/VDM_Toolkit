@@ -43,7 +43,7 @@ public abstract class GeneralisaPlugin extends CommandPlugin {
 	// target isabelle version (i.e. result of "isabelle version" call)
 	public static String isaVersion; 
 	// assuming max translation errors equals max type errors for now
-	public static int maxErrors;
+	public static long maxErrors;
 	// strict handling of errors (e.g. print output or not etc.)
 	public static boolean strict;	
     // whether to report or hide warnings
@@ -270,6 +270,7 @@ public abstract class GeneralisaPlugin extends CommandPlugin {
             if (errors.size() >= GeneralisaPlugin.maxErrors - 1) 
             {
 				String tooMany = "Too many translation errors";
+                workspace.Diag.severe(tooMany);
                 workspace.Diag.severe(String.valueOf(errors.size()));
                 workspace.Diag.severe(errors.toString());
     			errors.add(new VDM2IsaError(10, tooMany, location));

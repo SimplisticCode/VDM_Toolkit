@@ -1,4 +1,4 @@
-(* VDM to Isabelle Translation @2022-02-23T08:44:28.415430Z
+(* VDM to Isabelle Translation @2022-02-23T14:10:48.544676Z
    Copyright 2021, Leo Freitas, leo.freitas@newcastle.ac.uk
 
 in 'recordClocks1.vdmsl' at line 1:8
@@ -89,39 +89,37 @@ lemmas inv_Time_defs = inv_Real1_def inv_Time_def inv_VDMNat_def inv_VDMReal_def
 
 	
 	
-\<comment>\<open>VDM source: ValueType = real\<close>
-\<comment>\<open>in 'recordClocks1' (recordClocks1.vdmsl) at line 20:5\<close>
-datatype ValueType = U_VDMReal "VDMReal"
+\<comment>\<open>VDM source: ValueType = nat\<close>
+\<comment>\<open>in 'recordClocks1' (recordClocks1.vdmsl) at line 22:5\<close>
+type_synonym ValueType = "VDMNat"
 	
 
 \<comment>\<open>VDM source: inv_ValueType: (ValueType +> bool)
 	inv_ValueType(dummy0) ==
 null\<close>
-\<comment>\<open>in 'recordClocks1' (recordClocks1.vdmsl) at line 20:5\<close>
+\<comment>\<open>in 'recordClocks1' (recordClocks1.vdmsl) at line 22:5\<close>
 definition
 	inv_ValueType :: "ValueType \<Rightarrow> bool"
 where
 	"inv_ValueType dummy0 \<equiv> 
 		\<comment>\<open>Implicitly defined type invariant checks for undeclared `inv_ValueType` specification.\<close>
-		(((case dummy0 of
-		 ValueType.U_VDMReal dummy0 \<Rightarrow> (inv_VDMReal dummy0)
-		 )))"
+		(((inv_VDMNat dummy0)))"
 
 		 
-lemmas inv_ValueType_defs = inv_VDMReal_def inv_ValueType_def 
+lemmas inv_ValueType_defs = inv_VDMNat_def inv_ValueType_def 
 
 
 	
 	
 \<comment>\<open>VDM source: Ref = nat\<close>
-\<comment>\<open>in 'recordClocks1' (recordClocks1.vdmsl) at line 22:5\<close>
+\<comment>\<open>in 'recordClocks1' (recordClocks1.vdmsl) at line 24:5\<close>
 type_synonym Ref = "VDMNat"
 	
 
 \<comment>\<open>VDM source: inv_Ref: (Ref +> bool)
 	inv_Ref(dummy0) ==
 null\<close>
-\<comment>\<open>in 'recordClocks1' (recordClocks1.vdmsl) at line 22:5\<close>
+\<comment>\<open>in 'recordClocks1' (recordClocks1.vdmsl) at line 24:5\<close>
 definition
 	inv_Ref :: "Ref \<Rightarrow> bool"
 where
@@ -138,7 +136,7 @@ lemmas inv_Ref_defs = inv_Ref_def inv_VDMNat_def
 \<comment>\<open>VDM source: FMIValue = compose FMIValue of fmiValue:ValueType, time:Time end
 	eq mk_FMIValue(val1, t1) = mk_FMIValue(val2, t2) == ((val1 = val2) and (t1 = t2))
 	ord mk_FMIValue(-, t1) < mk_FMIValue(-, t2) == (t1 < t2)\<close>
-\<comment>\<open>in 'recordClocks1' (recordClocks1.vdmsl) at line 28:5\<close>
+\<comment>\<open>in 'recordClocks1' (recordClocks1.vdmsl) at line 30:5\<close>
 record FMIValue = 
 	fmiValue\<^sub>F\<^sub>M\<^sub>I\<^sub>V\<^sub>a\<^sub>l\<^sub>u\<^sub>e :: "ValueType"
 		 
@@ -148,7 +146,7 @@ record FMIValue =
 \<comment>\<open>VDM source: inv_FMIValue: (FMIValue +> bool)
 	inv_FMIValue(dummy0) ==
 null\<close>
-\<comment>\<open>in 'recordClocks1' (recordClocks1.vdmsl) at line 28:5\<close>
+\<comment>\<open>in 'recordClocks1' (recordClocks1.vdmsl) at line 30:5\<close>
 definition
 	inv_FMIValue :: "FMIValue \<Rightarrow> bool"
 where
@@ -162,7 +160,7 @@ where
 \<comment>\<open>VDM source: eq_FMIValue: (FMIValue * FMIValue +> bool)
 	eq_FMIValue(mk_FMIValue(val1, t1), mk_FMIValue(val2, t2)) ==
 ((val1 = val2) and (t1 = t2))\<close>
-\<comment>\<open>in 'recordClocks1' (recordClocks1.vdmsl) at line 31:8\<close>
+\<comment>\<open>in 'recordClocks1' (recordClocks1.vdmsl) at line 33:8\<close>
 definition
 	eq_FMIValue :: "FMIValue \<Rightarrow> FMIValue \<Rightarrow> bool"
 where
@@ -173,16 +171,15 @@ where
 		(let val1 = (fmiValue\<^sub>F\<^sub>M\<^sub>I\<^sub>V\<^sub>a\<^sub>l\<^sub>u\<^sub>e dummy0); t1 = (time\<^sub>F\<^sub>M\<^sub>I\<^sub>V\<^sub>a\<^sub>l\<^sub>u\<^sub>e dummy0); 
 			val1 = (fmiValue\<^sub>F\<^sub>M\<^sub>I\<^sub>V\<^sub>a\<^sub>l\<^sub>u\<^sub>e dummy0); t1 = (time\<^sub>F\<^sub>M\<^sub>I\<^sub>V\<^sub>a\<^sub>l\<^sub>u\<^sub>e dummy0) in 
 		\<comment>\<open>User defined body of eq_FMIValue.\<close>
-		(
-		\<comment>\<open>Implicit union type parameters projection\<close>
-		()))"
+		((val1 = val2) \<and> \<comment>\<open>Transform a VDM `=` expression into an `eq_Time` call\<close>
+	(eq_Time t1   t2)))"
 
 		
 
 \<comment>\<open>VDM source: ord_FMIValue: (FMIValue * FMIValue +> bool)
 	ord_FMIValue(mk_FMIValue(-, t1), mk_FMIValue(-, t2)) ==
 (t1 < t2)\<close>
-\<comment>\<open>in 'recordClocks1' (recordClocks1.vdmsl) at line 34:9\<close>
+\<comment>\<open>in 'recordClocks1' (recordClocks1.vdmsl) at line 36:9\<close>
 definition
 	ord_FMIValue :: "FMIValue \<Rightarrow> FMIValue \<Rightarrow> bool"
 where
@@ -204,14 +201,14 @@ lemmas inv_FMIValue_defs = inv_FMIValue_def inv_Real1_def inv_Time_def inv_VDMNa
 	
 \<comment>\<open>VDM source: Environment = map (Ref) to (FMIValue)
 	inv - == true\<close>
-\<comment>\<open>in 'recordClocks1' (recordClocks1.vdmsl) at line 40:5\<close>
+\<comment>\<open>in 'recordClocks1' (recordClocks1.vdmsl) at line 42:5\<close>
 type_synonym Environment = "(Ref \<rightharpoonup> FMIValue)"
 	
 
 \<comment>\<open>VDM source: inv_Environment: (map (Ref) to (FMIValue) +> bool)
 	inv_Environment(-) ==
 true\<close>
-\<comment>\<open>in 'recordClocks1' (recordClocks1.vdmsl) at line 41:9\<close>
+\<comment>\<open>in 'recordClocks1' (recordClocks1.vdmsl) at line 43:9\<close>
 definition
 	inv_Environment :: "Environment \<Rightarrow> bool"
 where
@@ -228,7 +225,7 @@ lemmas inv_Environment_defs = inv_Environment_def inv_FMIValue_def inv_Map_defs 
 	
 	
 \<comment>\<open>VDM source: Variable = compose Variable of ref:Ref end\<close>
-\<comment>\<open>in 'recordClocks1' (recordClocks1.vdmsl) at line 46:5\<close>
+\<comment>\<open>in 'recordClocks1' (recordClocks1.vdmsl) at line 48:5\<close>
 record Variable = 
 	ref\<^sub>V\<^sub>a\<^sub>r\<^sub>i\<^sub>a\<^sub>b\<^sub>l\<^sub>e :: "Ref"
 	
@@ -236,7 +233,7 @@ record Variable =
 \<comment>\<open>VDM source: inv_Variable: (Variable +> bool)
 	inv_Variable(dummy0) ==
 null\<close>
-\<comment>\<open>in 'recordClocks1' (recordClocks1.vdmsl) at line 46:5\<close>
+\<comment>\<open>in 'recordClocks1' (recordClocks1.vdmsl) at line 48:5\<close>
 definition
 	inv_Variable :: "Variable \<Rightarrow> bool"
 where
@@ -251,7 +248,7 @@ lemmas inv_Variable_defs = inv_Ref_def inv_VDMNat_def inv_Variable_def
 	
 	
 \<comment>\<open>VDM source: FMU = compose FMU of id:nat, env:Environment end\<close>
-\<comment>\<open>in 'recordClocks1' (recordClocks1.vdmsl) at line 50:5\<close>
+\<comment>\<open>in 'recordClocks1' (recordClocks1.vdmsl) at line 52:5\<close>
 record FMU = 
 	id\<^sub>F\<^sub>M\<^sub>U :: "VDMNat"
 		 
@@ -261,7 +258,7 @@ record FMU =
 \<comment>\<open>VDM source: inv_FMU: (FMU +> bool)
 	inv_FMU(dummy0) ==
 null\<close>
-\<comment>\<open>in 'recordClocks1' (recordClocks1.vdmsl) at line 50:5\<close>
+\<comment>\<open>in 'recordClocks1' (recordClocks1.vdmsl) at line 52:5\<close>
 definition
 	inv_FMU :: "FMU \<Rightarrow> bool"
 where
@@ -279,12 +276,12 @@ lemmas inv_FMU_defs = inv_Environment_def inv_FMIValue_def inv_FMU_def inv_Map_d
 	updateOutputs_Types(fmu, time) ==
 let nat_values:set of (nat) = {oValue | oValue in set (dom (fmu.env)) & is_(oValue, nat)}, mapValues:set of (FMIValue) = {mk_FMIValue(oValue, time) | oValue in set nat_values} in {oValue |-> mapValue | oValue in set nat_values, mapValue in set mapValues}
 	pre true\<close>
-\<comment>\<open>in 'recordClocks1' (recordClocks1.vdmsl) at line 68:5\<close>
+\<comment>\<open>in 'recordClocks1' (recordClocks1.vdmsl) at line 70:5\<close>
 
 \<comment>\<open>VDM source: pre_updateOutputs_Types: (FMU * Time +> bool)
 	pre_updateOutputs_Types(fmu, time) ==
 true\<close>
-\<comment>\<open>in 'recordClocks1' (recordClocks1.vdmsl) at line 75:9\<close>
+\<comment>\<open>in 'recordClocks1' (recordClocks1.vdmsl) at line 77:9\<close>
 definition
 	pre_updateOutputs_Types :: "FMU \<Rightarrow> Time \<Rightarrow> bool"
 where
@@ -298,13 +295,31 @@ where
 \<comment>\<open>VDM source: post_updateOutputs_Types: (FMU * Time * Environment +> bool)
 	post_updateOutputs_Types(fmu, time, RESULT) ==
 null\<close>
-\<comment>\<open>in 'recordClocks1' (recordClocks1.vdmsl) at line 68:5\<close>
+\<comment>\<open>in 'recordClocks1' (recordClocks1.vdmsl) at line 70:5\<close>
 definition
 	post_updateOutputs_Types :: "FMU \<Rightarrow> Time \<Rightarrow> Environment \<Rightarrow> bool"
 where
 	"post_updateOutputs_Types fmu   time   RESULT \<equiv> 
 		\<comment>\<open>Implicitly defined type invariant checks for undeclared `post_updateOutputs_Types` specification.\<close>
 		(inv_FMU fmu  \<and>  inv_Time time  \<and>  (inv_Environment RESULT))"
+
+definition
+  ex :: "FMU \<Rightarrow> Time \<Rightarrow> VDMNat VDMSet \<Rightarrow> FMIValue VDMSet \<Rightarrow> Environment"
+  where
+  "ex \<equiv> (\<comment>\<open>VDM Map comprehension is translated as a lambda-term through mapCompSetBound\<close>
+		mapCompSetBound 
+		{ oValue .   ((oValue \<in>nat_values))  } 
+		{ mapValue .   ((mapValue \<in>mapValues))  } 
+		(inv_VDMNat) 
+		
+		((((inv_VDMNat (fmiValue\<^sub>F\<^sub>M\<^sub>I\<^sub>V\<^sub>a\<^sub>l\<^sub>u\<^sub>e FMIValue)))) \<and> 
+		 ( ((((inv_VDMReal (r\<^sub>T\<^sub>i\<^sub>m\<^sub>e (time\<^sub>F\<^sub>M\<^sub>I\<^sub>V\<^sub>a\<^sub>l\<^sub>u\<^sub>e FMIValue))))) \<and> 
+		 ((inv_VDMNat (i\<^sub>T\<^sub>i\<^sub>m\<^sub>e (time\<^sub>F\<^sub>M\<^sub>I\<^sub>V\<^sub>a\<^sub>l\<^sub>u\<^sub>e FMIValue)))) ))
+		) 
+		(domid ) 
+		(rngid ) 
+		(truecnst ))"
+
 
 definition
 	updateOutputs_Types :: "FMU \<Rightarrow> Time \<Rightarrow> Environment"
@@ -316,26 +331,12 @@ where
 (nat_values::VDMNat VDMSet) = { oValue .   ((oValue \<in>(dom (env\<^sub>F\<^sub>M\<^sub>U fmu))))  \<and> isTest (oValue) (inv_VDMNat) }
 		;
 		
-(mapValues::FMIValue VDMSet) = { \<lparr>fmiValue\<^sub>F\<^sub>M\<^sub>I\<^sub>V\<^sub>a\<^sub>l\<^sub>u\<^sub>e = ValueType.U_VDMReal oValue, time\<^sub>F\<^sub>M\<^sub>I\<^sub>V\<^sub>a\<^sub>l\<^sub>u\<^sub>e = time\<rparr> | oValue .  ((oValue \<in>nat_values))  }
+(mapValues::FMIValue VDMSet) = { \<lparr>fmiValue\<^sub>F\<^sub>M\<^sub>I\<^sub>V\<^sub>a\<^sub>l\<^sub>u\<^sub>e = oValue, time\<^sub>F\<^sub>M\<^sub>I\<^sub>V\<^sub>a\<^sub>l\<^sub>u\<^sub>e = time\<rparr> | oValue .  ((oValue \<in>nat_values))  }
 		in
 			(if ((inv_VDMSet' (inv_VDMNat) nat_values))
 	 \<and> 
 	((inv_VDMSet' inv_FMIValue  mapValues)) then
-			(\<comment>\<open>VDM Map comprehension is translated as a lambda-term through mapCompSetBound\<close>
-		mapCompSetBound 
-		{ oValue .   ((oValue \<in>nat_values))  } 
-		{ mapValue .   ((mapValue \<in>mapValues))  } 
-		(inv_VDMNat) 
-		
-		((((case (fmiValue\<^sub>F\<^sub>M\<^sub>I\<^sub>V\<^sub>a\<^sub>l\<^sub>u\<^sub>e FMIValue) of
-		 ValueType.U_VDMReal (fmiValue\<^sub>F\<^sub>M\<^sub>I\<^sub>V\<^sub>a\<^sub>l\<^sub>u\<^sub>e FMIValue) \<Rightarrow> (inv_VDMReal (fmiValue\<^sub>F\<^sub>M\<^sub>I\<^sub>V\<^sub>a\<^sub>l\<^sub>u\<^sub>e FMIValue))
-		 ))) \<and> 
-		 ( ((((inv_VDMReal (r\<^sub>T\<^sub>i\<^sub>m\<^sub>e (time\<^sub>F\<^sub>M\<^sub>I\<^sub>V\<^sub>a\<^sub>l\<^sub>u\<^sub>e FMIValue))))) \<and> 
-		 ((inv_VDMNat (i\<^sub>T\<^sub>i\<^sub>m\<^sub>e (time\<^sub>F\<^sub>M\<^sub>I\<^sub>V\<^sub>a\<^sub>l\<^sub>u\<^sub>e FMIValue)))) ))
-		) 
-		(domid ) 
-		(rngid ) 
-		(truecnst ))
+			Map.empty
 		 else
 			undefined
 		)
