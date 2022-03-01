@@ -55,11 +55,11 @@ public abstract class TRAbstractInnerTypedType extends TRType {
         return type;
     }
 
-    @Override 
-    public TRType ultimateType()
-    {
-        return getInnerType().ultimateType();
-    }
+    // @Override 
+    // public TRType ultimateType()
+    // {
+    //     return getInnerType().ultimateType();
+    // }
 
     @Override
     protected void setInferredNamedForType(TCNameToken tn)
@@ -75,10 +75,14 @@ public abstract class TRAbstractInnerTypedType extends TRType {
     }
 
     @Override
-    public void setAtTopLevelDefinition(boolean b)
+    public boolean setAtTopLevelDefinition(boolean b, boolean deep)
     {
-        super.setAtTopLevelDefinition(b);
-        //getInnerType().setAtTopLevelDefinition(b);
+        boolean old = super.setAtTopLevelDefinition(b, deep);
+        if (deep)
+        {
+            getInnerType().setAtTopLevelDefinition(b, deep);
+        }
+        return old;
     }
 
     @Override

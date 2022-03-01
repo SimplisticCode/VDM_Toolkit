@@ -76,7 +76,7 @@ public class Vdm2isaPlugin extends GeneralisaPlugin
 			{
 				ExuPlugin exu = new ExuPlugin(interpreter);
 				// plugin run worked if exu's run works
-				result = exu.run(argv);
+				result = exu.isaRun(tclist, argv);
 
 				// clear error messages to avoid duplication
 				if (result)
@@ -144,7 +144,7 @@ public class Vdm2isaPlugin extends GeneralisaPlugin
 
 	public static final void setupProperties()
 	{
-		GeneralisaPlugin.setupProperties();
+		ExuPlugin.setupProperties();
 		Vdm2isaPlugin.linientPost 	= false;
 		Vdm2isaPlugin.printVDMComments = true;
 		Vdm2isaPlugin.printIsaComments = true;

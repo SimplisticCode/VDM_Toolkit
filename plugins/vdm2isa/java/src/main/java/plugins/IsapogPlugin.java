@@ -87,7 +87,7 @@ public class IsapogPlugin extends GeneralisaPlugin {
         return "Translated " + 
             plural(getLocalPOCount(), "PO", "s") + 
             " (of " + (getLocalPOCount()+getLocalPONotTranslatedCount()) + ")" +
-            " with " + this.strategy.name().toLowerCase() + " proof strategy for ";
+            " with " + IsapogPlugin.strategy.name().toLowerCase() + " proof strategy for ";
     }
 
     @Override
@@ -96,7 +96,7 @@ public class IsapogPlugin extends GeneralisaPlugin {
         if (interpreter instanceof ModuleInterpreter)
         {
             Vdm2isaPlugin vdm2isa = new Vdm2isaPlugin(interpreter);
-            result = vdm2isa.run(argv);  
+            result = vdm2isa.isaRun(tclist, argv);  
             if (result)
                 Console.out.println("Starting Isabelle VDM Proof Obligation generation.");
             
@@ -136,8 +136,8 @@ public class IsapogPlugin extends GeneralisaPlugin {
                         workingAt = "creating proof script for PO " + poNumber + " for " + po.location.module;
                         TRProofScriptDefinition poScript = chooseProofScript(po, potrExpr);
                         TRIsaVDMCommentList comments = TRIsaVDMCommentList.newComment(po.location, "VDM PO("+ poNumber +"): \"" + po.toString() + "\"", false);
-                        TRType poType = null;
-                        TRProofObligationDefinition poe = TRProofObligationDefinition.newProofObligationDefinition(comments, po, potrExpr, poType /* TRType for potrExpr!*/, poScript);
+                        TRType poType = potrExpr.getType();
+                        TRProofObligationDefinition poe = TRProofObligationDefinition.newProofObligationDefinition(comments, po, potrExpr, poType /* TRType for potrExpr!*/, poNumber, poScript);
                         isapogl.add(poe);
                         poNumber++;
                     }
@@ -280,7 +280,7 @@ public class IsapogPlugin extends GeneralisaPlugin {
 
     public static final void setupProperties()
 	{
-        GeneralisaPlugin.setupProperties();
+        Vdm2isaPlugin.setupProperties();
         IsapogPlugin.strategy = IsaProofStrategy.SURRENDER;
     }
 }
