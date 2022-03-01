@@ -1,0 +1,206 @@
+module meyer 
+exports all
+definitions
+
+types
+	-- All players have an ID
+	Ref = nat;
+
+	--A dice can be anything between 1 and 6
+	Dice = nat1
+	inv d == d >= 1 and d <= 6;
+
+	-- A player can either throw, lift or bluff
+	Strategy = <Throw> | <Bluff> | <Lift>;
+
+	-- A player can at most have 6 lifes
+	Lifes = nat 
+	inv p == p <= 6;
+
+functions
+	isMeyer : Dice * Dice -> bool
+	isMeyer(dice1, dice2) ==
+		dice1 = 2 and dice2 = 1;
+
+	isLittleMeyer : Dice * Dice -> bool
+	isLittleMeyer(dice1, dice2) ==
+		dice1 = 3 and dice2 = 1;
+
+	isPair : Dice * Dice -> bool
+	isPair(dice1, dice2) == 
+		dice1 = dice2;
+
+	isOrdernaryThrow : Dice * Dice -> bool
+	isOrdernaryThrow(dice1, dice2) ==
+		not(isPair(dice1,dice2))
+		and not(isMeyer(dice1,dice2))
+		and not(isLittleMeyer(dice1,dice2));
+
+types
+
+	Throw ::
+		d1 : Dice
+		d2 : Dice
+	inv mk_Throw(d1, d2) ==
+		-- The first dice is always the greatest
+		d1 >= d2
+	eq throw1 = throw2 ==
+		throw1.d1 = throw2.d1
+		and throw1.d2 = throw2.d2
+	ord throw1 < throw2 ==
+		isMeyer(throw2.d1, throw2.d2) and not(isMeyer(throw1.d1, throw1.d2))
+		or isLittleMeyer(throw2.d1, throw2.d2) and not(isMeyer(throw1.d1, throw1.d2) or isLittleMeyer(throw1.d1, throw1.d2))
+		or isPair(throw2.d1, throw2.d2) and isPair(throw1.d1, throw1.d2) and throw2.d1 > throw1.d1 
+		or isPair(throw2.d1, throw2.d2) and isOrdernaryThrow(throw1.d1, throw1.d2)
+		or (isOrdernaryThrow(throw1.d1, throw1.d2) 
+			and isOrdernaryThrow(throw2.d1, throw2.d2)
+			and (throw2.d1 > throw1.d1 
+				or (throw2.d1 = throw1.d1 and throw2.d2 > throw2.d2))
+			);   
+
+
+values 
+
+	possibleThrows : set1 of Throw = {mk_Throw(d1, d2) | d1, d2 in set {1,...,6}};
+
+types
+
+	-- A player has a number of lifes and an ID
+	Player :: 
+		id 	  : Ref
+		lifes : Lifes;
+
+	
+	Turn ::
+		realThrow 		 : Throw
+		claimedThrow	 : Throw
+		player			 : Ref
+	inv mk_Turn(realThrow, claimedThrow, -) ==
+		-- You always need to say somethig that is definetly higher
+		realThrow <= claimedThrow
+	eq turn1 = turn2 ==
+		turn1.claimedThrow = turn2.claimedThrow
+	ord turn1 < turn2 ==
+		turn1.claimedThrow < turn2.claimedThrow;
+
+	
+	Environment ::
+		players 	 : map Ref to Player
+		turnOrder 	 : seq1 of Ref
+		turns	 	 : seq of Turn
+		currentTurn	 : Ref 
+	inv mk_Environment(players, turnOrder, turns, currentTurn) ==
+		let 
+			activePlayers : set of Ref = {player.id | player in set rng players & player.lifes > 0}
+		in
+			(forall player in set dom players 
+				& players(player).id = player)
+			-- All active players have a turn
+			and activePlayers = elems turnOrder
+			-- All players are only represented once
+			and len turnOrder = card (elems turnOrder)
+			-- Only active players have had a turn
+			and {turn.player | turn in seq turns} subset activePlayers
+			and currentTurn in set activePlayers
+			and 
+				forall turn in set inds turns
+								& turn < len turns
+								-- All turns need to make a higher claim than its predesecor:
+								and turns(turn).claimedThrow <= turns(turn + 1).claimedThrow;
+
+		
+
+functions
+
+	lift : Player * Environment -> Ref
+	lift(player, env) ==
+		let lastTurn = hd env.turns
+		in
+			if(lastTurn.realThrow < lastTurn.claimedThrow) 
+			-- If last player lied they loose
+			then lastTurn.player
+			-- If last player did not lie current play loose
+			else player.id
+	pre 
+		-- We can only lift if at least one turn has een co
+		len(env.turns) > 0
+	post 
+		RESULT in set dom env.players;
+		
+	-- Make a bluff that is greater than the last throw
+	bluff : Throw -> Throw
+	bluff(lastThrow) ==
+		let t in set 
+			{throw | throw in set possibleThrows & throw >= lastThrow} 	
+		in 
+		 	t
+	pre 
+		true
+	post 
+		RESULT >= lastThrow;
+
+
+	rollDices : () -> Throw
+	rollDices() ==
+		let e 
+			in set possibleThrows 
+		in e;
+
+
+	newRound : Ref * Environment -> Environment
+	newRound(looser, env) ==
+		env
+	pre 
+		looser in set dom env.players;
+
+	nextTurn : Turn * Environment -> Environment
+	nextTurn(turn, env) ==
+		env;
+
+
+	performStrategy : Environment * Strategy-> Environment
+	performStrategy(env, strategy) ==
+	cases strategy:
+		<Throw> -> 
+			let dices : Throw = rollDices()
+			in
+				if(len(env.turns) = 0 or dices > (hd env.turns))
+				then env
+				else env,
+		<Lift> -> newRound(lift(env), env),
+		others -> env
+	end;
+
+
+	winnerFound : Environment -> bool
+	winnerFound(env) ==
+		card {player | player in set rng env.players & player.lifes > 0} = 1;
+
+	takeTurn : Environment -> Environment 
+	takeTurn(env) ==
+		let strategy in set
+			if(len(env.turns) > 0)
+			then {<Throw>, <Lift>}
+			else {<Throw>}
+		in
+			let env1 : Environment = performStrategy(env, strategy)
+				in
+
+				if(winnerFound(env1))
+				then
+					env1
+				else takeTurn(env1);
+	--measure {player.lifes | player in set rng env.players} 
+
+
+
+
+
+
+
+
+
+
+
+
+end meyer
