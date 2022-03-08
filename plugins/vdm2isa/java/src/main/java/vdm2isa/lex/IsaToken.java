@@ -52,6 +52,7 @@ public enum IsaToken {
 	SETSEQBIND(null, "\\<leftarrow> sorted_list_of_set"),
 	UNDERSCORE(null, "_"),
 	PO(null, "PO"),
+	POG(null, "POG"),
 
 	// Unary Operators
 	NOT(Token.NOT, "\\<not>"),
@@ -208,6 +209,10 @@ public enum IsaToken {
 	ISAR_TRY(null, "try"),
 	ISAR_TRY0(null, "try0"),
 	ISAR_NITPICK(null, "nitpick"),
+	ISAR_UNFOLD_LOCALES(null, "unfold_locales"),
+	ISAR_SIMP(null, "simp"),
+	ISAR_SIMP_ALL(null, "simp_all"),
+	ISAR_BY(null, "by"),
 
 	MODULE(Token.MODULE, "theory"),
 	IF(Token.IF, "if"),

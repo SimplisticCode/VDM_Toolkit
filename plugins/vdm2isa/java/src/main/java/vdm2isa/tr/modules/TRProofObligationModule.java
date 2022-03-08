@@ -3,7 +3,10 @@ package vdm2isa.tr.modules;
 import com.fujitsu.vdmj.tc.lex.TCIdentifierToken;
 import com.fujitsu.vdmj.tc.modules.TCModule;
 
+import plugins.IsapogPlugin;
+import vdm2isa.lex.IsaItem;
 import vdm2isa.lex.IsaTemplates;
+import vdm2isa.lex.IsaToken;
 import vdm2isa.tr.TRNode;
 import vdm2isa.tr.definitions.TRDefinitionList;
 
@@ -27,6 +30,13 @@ public class TRProofObligationModule extends TRModule
         this.poModuleOwner = owner.name.toString();
     }
 
+    @Override
+    public void setup()
+    {
+        super.setup();
+        setFormattingSeparator("\n");
+    }
+
     /**
      * Isabelle POs file imports the PO module owner's Isabelle file of the same name. 
      */
@@ -41,6 +51,19 @@ public class TRProofObligationModule extends TRModule
     {
         return poModuleOwner.equals(fileName);
         //return poModuleOwner.startsWith(fileName) && poModuleOwner.equals(IsaTemplates.getPOModuleName(fileName));
+    }
+
+    @Override 
+    public String getPostScript()
+    {
+        StringBuilder sb = new StringBuilder();
+        sb.append(IsaTemplates.translatePOGLocale(getLocation()));
+        sb.append(getFormattingSeparator());
+        sb.append(getFormattingSeparator());
+        String interpretation = null;
+        String script = null;//null=defaultScript; IsaToken.ISAR_OOPS.toString();
+        sb.append(IsaTemplates.translatePOGLocaleInterpreation(getLocation(), IsapogPlugin.createPOGLocaleInterpretationLemmas, interpretation, script));
+        return sb.toString();
     }
 
     public static final TRModule newProofObligationModule(String owner, TRDefinitionList pos) {
